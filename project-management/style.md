@@ -11,6 +11,10 @@
 - Gray:
   - Probably just use the gray colors in TailwindCSS
 
+## Fonts
+
+- Inter
+
 ## Design
 
 - Modern

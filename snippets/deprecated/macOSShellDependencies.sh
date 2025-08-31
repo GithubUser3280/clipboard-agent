@@ -10,8 +10,8 @@
     | jq -r '.[] | select(any(.messages[]?;true)) | "\(.messages)",.filePath' \
     > "$e"
 
-  # Write ESLint diagnostics without file paths
-  grep -v '^/' "$e"
+  # Write ESLint diagnostics without file paths to temporary file
+  grep -v '^/' "$e" > "$e"
 
   # Create temporary file to store TypeScript Compiler output
   t=$(mktemp)

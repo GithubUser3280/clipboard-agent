@@ -29,10 +29,10 @@ $TOUT  = (New-Tmp 'tsc').FullName
 $OTXT  = (New-Tmp 'out').FullName
 $FLIST = (New-Tmp 'files').FullName
 
-# Write ESLint JSON
+# Write ESLint JSON to temporary file
 & $eslint . --no-color -f json 1> $EJSON 2>$null; $null = $LASTEXITCODE
 
-# Write Typescript Compiler output
+# Write Typescript Compiler output to temporary file
 & $tsc --noEmit --incremental false --pretty false *>&1 | Set-Content -LiteralPath $TOUT
 
 # Parse and assemble with PowerShell

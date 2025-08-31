@@ -1,36 +1,14 @@
 # Roadmap
 
-## Project Management
-
-- Add project management files
-
-## Design
-
-- Choose primary and secondary colors (dark)
-- Choose theme colors (dark)
-
-## Project Setup
-
-- Configure ESLint
-- Configure Prettier
-  - TailwindCSS
-  - Import order
-- Configure Husky
-
-## Development
-
-- Just make the website its static its not that hard
-
-## Deployment
-
-- Hope Cloudflare will be as easy as Next.js with Vercel.
-
 ## SEO
 
-- Would be cool to see this website when searching
+- [ ] Optimize metadata
+- [ ] Generate backlinks
 
-## More Features
+## Features
 
-- Use .agentignore or .gitignore
-- Add files through run command (fuzzy search?)
-- Agent.md support?
+- [ ] Implement .agentignore or use .gitignore
+- [ ] Add reminder to alias shell script for easy access
+- [ ] Pipe errors directly to one-line terminal commmand or shell script
+- [ ] Append files when using shell script, with and without using an alias
+- [ ] Support Agent.md

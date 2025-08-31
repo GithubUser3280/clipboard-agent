@@ -1,23 +1,18 @@
 # Style
 
-## Brand Identity
+## Design
 
-- Simple
+- Minimal
+- Modern
+- Dark mode
+- Grayscale
 
 ## Colors
 
-- #FFFFFF: White
-- #000000: Black
-- Gray:
-  - Probably just use the gray colors in TailwindCSS
+- White: #FFFFFF
+- Black: #000000
+- Gray: TailwindCSS gray
 
 ## Fonts
 
 - Inter
-
-## Design
-
-- Modern
-- Sharp lines
-- Circles I guess
-- Probably also need code display with copy functionality

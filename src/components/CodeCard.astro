@@ -1,0 +1,54 @@
+---
+interface Props {
+  title: string;
+  monoTitle?: boolean;
+}
+const { title, monoTitle = true } = Astro.props;
+---
+
+<div data-codecard>
+  <div
+    class="flex items-center justify-between rounded-t border border-gray-700 bg-gray-800 px-4 py-4"
+  >
+    <span class={`text-xl ${monoTitle ? "font-mono" : ""}`}>{title}</span>
+    <button
+      type="button"
+      data-role="copy"
+      class="rounded bg-gray-200 px-4 py-2 text-gray-900"
+    >
+      Copy
+    </button>
+  </div>
+
+  <!-- Everything slotted is the copy source -->
+  <div data-copy-source class="rounded-b border-x border-b border-gray-700">
+    <slot />
+  </div>
+
+  <script is:inline>
+    (function (root) {
+      if (!root) return;
+      const btn = root.querySelector('[data-role="copy"]');
+      const src = root.querySelector("[data-copy-source]");
+      if (!btn || !src) return;
+      async function copy(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      btn.addEventListener("click", async () => {
+        const text = (src.innerText ?? src.textContent ?? "").trimEnd();
+        if (!text) return;
+        const ok = await copy(text);
+        if (ok) {
+          const prev = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(() => (btn.textContent = prev || "Copy"), 1600);
+        }
+      });
+    })(document.currentScript.closest("[data-codecard]"));
+  </script>
+</div>

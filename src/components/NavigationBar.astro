@@ -1,0 +1,31 @@
+---
+const sections = [
+  { label: "Copy", href: "#hero" },
+  { label: "Features", href: "#features" },
+  { label: "Learn", href: "#learn" },
+  { label: "Customize", href: "#customize" },
+  { label: "Contribute", href: "#contribute" },
+];
+---
+
+<nav class="w-full border-b border-b-gray-600 bg-gray-800">
+  <div
+    class="mx-auto flex h-full max-w-6xl flex-row items-center justify-between gap-4"
+  >
+    <a href="#hero" class="py-4 text-4xl font-semibold">Clipboard Agent</a>
+    <ul class="flex h-full text-2xl">
+      {
+        sections.map(({ label, href }) => (
+          <li>
+            <a
+              href={href}
+              class="flex h-full items-center p-4 hover:bg-gray-700"
+            >
+              {label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</nav>

@@ -1,16 +1,765 @@
 ---
-import "../styles/global.css";
+import Base from "../layouts/Base.astro";
+import { Code } from "astro:components";
+import CodeCard from "../components/CodeCard.astro";
+import TextField from "../components/TextField.astro";
+import Tabs from "../components/Tabs.astro";
+
+const prompt = `The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.`;
+
+const macOSPOSIX = String.raw`(printf "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.\n\n";e=$(mktemp);npx eslint . --no-color --format=json|jq -r '.[] | select(any(.messages[]?;true)) | "\(.messages)",.filePath'>"$e";grep -v '^/' "$e";t=$(mktemp);npx tsc --noEmit --incremental false --pretty false 2>&1|tee "$t";f=$(mktemp); { grep '^/' "$e";awk -F'[(]' '{print $1}' "$t";}|awk -v d="$PWD" '{p=$0;gsub(/^[[:space:]]+|[[:space:]]+$/, "", p);if (p=="") next;if (p !~ /^\//) p=d "/" p;print p;}'|while IFS= read -r p;do realpath "$p" 2>/dev/null||printf "%s\n" "$p";done |sort -u>"$f";while IFS= read -r f; do [ -f "$f" ] || continue;echo "\n## $f";cat -n "$f";done <"$f";rm -f "$e" "$t" "$f")|pbcopy`;
+
+const experimentalUniversalPOSIX = String.raw`( set -u;e=\${TMPDIR:-/tmp}/e.$$;t=\${TMPDIR:-/tmp}/t.$$;o=\${TMPDIR:-/tmp}/o.$$;l=./node_modules/.bin/eslint;[ -x "$l" ]||l=$(command -v eslint||:);c=./node_modules/.bin/tsc;[ -x "$c" ]||c=$(command -v tsc||:);n=$(command -v node||:);[ "$n" ]&&[ "$l" ]&&[ "$c" ]|| { echo missing node/eslint/tsc;exit 1;};"$l" . --no-color -f json>"$e" 2>/dev/null||:;"$c" --noEmit --incremental false --pretty false>"$t" 2>&1||:;node -e "const f=require('fs'),p=process.argv;let e='',t='';try{e=f.readFileSync(p[2],'utf8')}catch{}try{t=f.readFileSync(p[3],'utf8')}catch{}const d=p[4];let a=[],h=0;try{JSON.parse(e).forEach(x=>{if(x&&x.messages&&x.messages.length){h=1;const r=(x.filePath||'').replace(d+'/','');x.messages.forEach(m=>a.push(\`\${r}:\${m.line||0}:\${m.column||0}: \${m.severity===2?'error':'warn'}: \${m.message}\${m.ruleId?\` [\${m.ruleId}]\`:''}\`));}})}catch{}if(t.trim())h=1;if(h){a.unshift('','The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.')}process.stdout.write(a.join('\n'))" "$e" "$t" "$PWD">"$o";[ -s "$o" ]&& { pbcopy<"$o"&&echo Copied||echo "See:$o"; }||echo "No issues.";rm -f "$e" "$t" "$o" )`;
+
+const NEEDLE =
+  "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.";
+
+const [pre, suf] = experimentalUniversalPOSIX.split(NEEDLE);
+
+const codeWithSpan = pre + NEEDLE + suf;
+
+import { codeToHtml } from "shiki";
+
+const highlighted = await codeToHtml(codeWithSpan, {
+  lang: "sh",
+  theme: "github-dark",
+});
+
+// Remove outer <pre><code> and keep only inner HTML
+const inner = highlighted
+  .replace(/^.*?<code[^>]*>/s, "")
+  .replace(/<\/code>\s*<\/pre>$/s, "");
+
+const features = [
+  {
+    label: "Open Source",
+    description:
+      "No rate limits, no API keys. Switch to any provider, at any time.",
+  },
+  {
+    label: "Easy Integration",
+    description:
+      "No package managers, no dependencies*. Just copy and paste, or create one file.",
+  },
+  {
+    label: "Any Provider Works",
+    description: "Any provider works, just paste into the chatbot UI.",
+  },
+  {
+    label: "Customizable",
+    description: "Fine-tune your prompt, exactly how you like it.",
+  },
+  {
+    label: "No Project Changes",
+    description:
+      "No files are created or written to, except for temporary files.",
+  },
+];
+
+const copyCodeA = String.raw`#!/usr/bin/env sh
+set -u
+
+# Find commands
+find_cmd() {
+  if [ -x "./node_modules/.bin/$1" ]; then
+    printf '%s\n' "./node_modules/.bin/$1"
+    return 0
+  elif command -v "$1" >/dev/null 2>&1; then
+    command -v "$1"
+    return 0
+  fi
+  return 1
+}
+
+ESLINT_CMD=$(find_cmd eslint) || { echo "eslint not found"; exit 1; }
+TSC_CMD=$(find_cmd tsc) || { echo "tsc not found"; exit 1; }
+NODE_CMD=$(command -v node) || { echo "node not found"; exit 1; }
+
+# Create temp files with fallback if mktemp missing.
+mkf() { mktemp 2>/dev/null || echo "/tmp/portable.$$.$1"; }
+E_JSON=$(mkf eslint.json)
+T_OUT=$(mkf tsc.out)
+O_TXT=$(mkf out.txt)
+F_LIST=$(mkf files.list)
+
+copied="no"
+
+# 1) ESLint JSON to file.
+"$ESLINT_CMD" . --no-color -f json > "$E_JSON" 2>/dev/null || true
+
+# 2) Run tsc and combine output.
+"$TSC_CMD" --noEmit --incremental false --pretty false >"$T_OUT" 2>&1 || true
+
+# 3) Use Node to:
+#    - parse ESLint JSON
+#    - parse tsc text to paths
+#    - resolve absolute paths
+#    - dedupe
+#    - produce human messages (no absolute paths)
+#    - write file list
+#    - write header/prompt if any diagnostics
+"$NODE_CMD" - <<'NODE' "$PWD" "$E_JSON" "$T_OUT" "$O_TXT" "$F_LIST"
+const fs = require('fs');
+const path = require('path');
+
+const [pwd, eslintJsonPath, tscOutPath, outTxtPath, filesListPath] = process.argv.slice(2);
+const outLines = [];
+const files = new Set();
+
+function abs(p) {
+  if (!p) return null;
+  try {
+    // Resolve relative to project root, then realpath if possible.
+    const r = path.resolve(pwd, p);
+    try { return fs.realpathSync.native(r); } catch { return r; }
+  } catch { return null; }
+}
+
+function pushFile(p) {
+  const a = abs(p);
+  if (a) files.add(a);
+}
+
+let eslintHad = false;
+try {
+  const raw = fs.readFileSync(eslintJsonPath, 'utf8');
+  const arr = JSON.parse(raw);
+  for (const entry of arr) {
+    if (entry && Array.isArray(entry.messages) && entry.messages.length) {
+      eslintHad = true;
+      // human-readable, but avoid absolute file paths
+      const rel = path.relative(pwd, entry.filePath || '');
+      for (const m of entry.messages) {
+        const rule = m.ruleId ? \` [\${m.ruleId}]\` : '';
+        outLines.push(\`\${rel}:\${m.line || 0}:\${m.column || 0}: \${m.severity === 2 ? 'error' : 'warn'}: \${m.message}\${rule}\`);
+      }
+      pushFile(entry.filePath);
+    }
+  }
+} catch {}
+
+let tscHad = false;
+try {
+  const txt = fs.readFileSync(tscOutPath, 'utf8');
+  if (txt.trim()) tscHad = true;
+  // Match "path:line:col - ..." or "path(line,col): ..."
+  const re = /^([^\r\n:(]+(?:\/|\\)[^\r\n:(]+?)[(:]\d+[,:\)]\d+/gm;
+  let m;
+  while ((m = re.exec(txt)) !== null) {
+    pushFile(m[1]);
+  }
+} catch {}
+
+if (eslintHad || tscHad) {
+  outLines.unshift('','The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.');
+  fs.writeFileSync(outTxtPath, outLines.join('\n') + '\n', 'utf8');
+  fs.writeFileSync(filesListPath, Array.from(files).join('\n') + '\n', 'utf8');
+} else {
+  // nothing to do; create empty outputs
+  try { fs.writeFileSync(outTxtPath, ''); } catch {}
+  try { fs.writeFileSync(filesListPath, ''); } catch {}
+}
+NODE
+
+# 4) Append file dumps with line numbers if any diagnostics.
+if [ -s "$O_TXT" ]; then
+  while IFS= read -r path; do
+    [ -f "$path" ] || continue
+    printf '\n## %s\n' "$path" >> "$O_TXT"
+    # POSIX cat -n is standard
+    cat -n "$path" >> "$O_TXT"
+  done < "$F_LIST"
+fi
+
+# 5) Copy if possible; otherwise print a brief notice and path.
+copy_to_clipboard() {
+  if command -v pbcopy >/dev/null 2>&1; then pbcopy; return 0; fi
+  if command -v wl-copy >/dev/null 2>&1; then wl-copy; return 0; fi
+  if command -v xclip   >/dev/null 2>&1; then xclip -selection clipboard; return 0; fi
+  if command -v xsel    >/dev/null 2>&1; then xsel --clipboard --input; return 0; fi
+  if command -v clip.exe>/dev/null 2>&1; then clip.exe; return 0; fi
+  return 1
+}
+
+if [ -s "$O_TXT" ]; then
+  if copy_to_clipboard < "$O_TXT"; then
+    copied="yes"
+  else
+    copied="no"
+  fi
+fi
+
+# 6) Report
+if [ "$copied" = "yes" ]; then
+  echo "Copied context to clipboard."
+elif [ -s "$O_TXT" ]; then
+  echo "Diagnostics found. Clipboard tool not available. See: $O_TXT"
+else
+  echo "No warnings or errors found. Nothing was copied to clipboard."
+fi`;
+
+const [preX, sufX] = copyCodeA.split(NEEDLE);
+
+const codeWithSpanX = preX + NEEDLE + sufX;
+
+const highlightedX = await codeToHtml(codeWithSpanX, {
+  lang: "sh",
+  theme: "github-dark",
+});
+
+// Remove outer <pre><code> and keep only inner HTML
+const innerX = highlightedX
+  .replace(/^.*?<code[^>]*>/s, "")
+  .replace(/<\/code>\s*<\/pre>$/s, "");
+
+const steps = [
+  { title: "Setup shell", range: [1, 2] },
+  { title: "Find commands", range: [4, 14] },
+  {
+    title: "Define ESLint, Typescript Compiler, and Node.js",
+    range: [16, 18],
+  },
+  { title: "Create temporary files", range: [20, 27] },
+  {
+    title: "Write ESLint json output to temporary file",
+    range: [29, 30],
+  },
+  {
+    title: "Run Typescript Compiler and combine output",
+    range: [32, 33],
+  },
+  {
+    title:
+      "Use Node for parsing the ESLint JSON, parse Typescript Compiler output for paths, make all paths absolute, dedupe duplicate paths, write file list, and write header if needed",
+    range: [35, 108],
+  },
+  {
+    title: "Append file dumps with line number if needed",
+    range: [110, 118],
+  },
+  {
+    title: "Attempt to copy to system clipboard, write to file if none found.",
+    range: [120, 136],
+  },
+  {
+    title: "Display success or failure",
+    range: [138, 145],
+  },
+];
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Clipboard Agent</title>
-  </head>
-  <body>
-    <h1>Clipboard Agent</h1>
-  </body>
-</html>
+<Base title="Clipboard Agent">
+  <section id="hero" class="flex min-h-screen justify-center">
+    <div class="flex max-w-6xl flex-row items-center">
+      <div class="flex basis-1/2 flex-col gap-4">
+        <h1 class="text-8xl font-bold">No API.<br />No install.</h1>
+        <p class="text-4xl text-slate-300">Just copy and paste.</p>
+        <p class="text-xl text-slate-400">
+          Looking for the universal POSIX version?
+          <a href="#customize" class="underline">Click here</a>
+        </p>
+      </div>
+      <div class="flex basis-1/2">
+        <CodeCard title="macOS POSIX (eslint + tsc)" monoTitle={false}>
+          <Code
+            class="astro-code rounded-b p-4 break-words whitespace-pre-wrap"
+            code={macOSPOSIX}
+            lang="sh"
+          />
+        </CodeCard>
+      </div>
+    </div>
+
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2">
+      <svg
+        class="h-6 w-6 animate-bounce text-gray-500"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"
+        ></path>
+      </svg>
+    </div>
+  </section>
+
+  <section id="features" class="flex justify-center p-16">
+    <div class="flex max-w-6xl flex-col gap-8">
+      <h2 class="text-semibold text-center text-4xl font-semibold">Features</h2>
+      <ul class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {
+          features.map(({ label, description }) => (
+            <li class="flex flex-col gap-2 rounded bg-gray-800 p-4">
+              <h3 class="flex h-full items-center text-2xl">{label}</h3>
+              <p class="text-gray-200">{description}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section id="learn" class="flex justify-center p-16">
+    <div class="flex w-full max-w-6xl flex-col justify-center gap-8">
+      <h2 class="w-full text-center text-4xl font-semibold">How It Works</h2>
+      <div class="grid w-full max-w-6xl grid-cols-1 gap-8 p-4 lg:grid-cols-2">
+        <!-- Left: scrollytelling steps -->
+        <div id="learn-steps" class="flex flex-col gap-128 py-128">
+          {
+            steps.map((s) => (
+              <article
+                class="animate-[fade-center_1s_linear_both] rounded border border-gray-700 bg-gray-800 p-4 [animation-range:cover] [animation-timeline:view()] md:p-6"
+                data-range={`${s.range[0]}-${s.range[1]}`}
+              >
+                <h3 class="text-2xl font-semibold">{s.title}</h3>
+                <p class="mt-2 text-gray-300">
+                  Lines {s.range[0]}–{s.range[1]}
+                </p>
+              </article>
+            ))
+          }
+        </div>
+
+        <!-- Right: sticky highlighted code -->
+        <div class="self-start lg:sticky lg:top-8">
+          <CodeCard title="ca.sh" monoTitle={true}>
+            <div
+              class="code-scroller max-h-[75vh] overflow-hidden"
+              id="scroller"
+            >
+              <Code
+                id="learn-code"
+                class="astro-code block p-4 break-words whitespace-pre-wrap"
+                code={copyCodeA}
+                lang="sh"
+              />
+            </div>
+          </CodeCard>
+        </div>
+      </div>
+    </div>
+
+    <style is:global>
+      #learn-code .line {
+        display: block;
+      }
+      #learn-code .line:empty::before {
+        content: "\00a0";
+      } /* keeps visual blank line */
+
+      #learn-code .active-line {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      #learn .code-scroller {
+        scroll-padding-top: 1rem;
+      }
+
+      /* Remove horizontal padding from the <pre> so lines can go edge-to-edge */
+      #learn #learn-code.astro-code {
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      /* Re-add the padding to the text itself */
+      #learn #learn-code code {
+        display: block;
+        padding: 0 1rem;
+      }
+
+      /* Each line is a full-width block */
+      #learn #learn-code .line {
+        display: block;
+      }
+
+      /* Highlight fills the whole row, including the left/right padding */
+      #learn #learn-code .active-line {
+        background: rgba(255, 255, 255, 0.08);
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
+      @keyframes fade-center {
+        0% {
+          opacity: 0;
+        }
+        30% {
+          opacity: 1;
+        }
+        70% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+    </style>
+
+    <script is:inline>
+      (function () {
+        // Strictly scope to the learn code block.
+        const scroller = document.querySelector("#learn .code-scroller");
+
+        // add this helper near the top of the IIFE, after `const scroller = ...`
+        function scrollGroupIntoView(
+          scrollerEl,
+          firstEl,
+          lastEl,
+          marginPx = 24,
+        ) {
+          if (!scrollerEl || !firstEl) return;
+          const sRect = scrollerEl.getBoundingClientRect();
+          const fRect = firstEl.getBoundingClientRect();
+          const lRect = (lastEl || firstEl).getBoundingClientRect();
+
+          // bounds of highlighted block in scroller coordinates
+          const groupTop =
+            fRect.top - sRect.top + scrollerEl.scrollTop - marginPx;
+          const groupBottom =
+            lRect.bottom - sRect.top + scrollerEl.scrollTop + marginPx;
+
+          const viewTop = scrollerEl.scrollTop;
+          const viewBottom = viewTop + scrollerEl.clientHeight;
+
+          let nextTop = viewTop;
+          if (groupTop < viewTop) nextTop = groupTop;
+          else if (groupBottom > viewBottom)
+            nextTop = groupBottom - scrollerEl.clientHeight;
+
+          if (Math.abs(nextTop - viewTop) > 1) {
+            // instant to avoid jitter while scrolling the left column
+            scrollerEl.scrollTo({ top: nextTop });
+          }
+        }
+
+        const codeRoot =
+          scroller?.querySelector("pre.astro-code") ||
+          document.querySelector("#learn pre.astro-code");
+
+        function stripInterlineNewlines(root) {
+          const code =
+            root.tagName === "PRE" ? root.querySelector("code") : root;
+          if (!code) return;
+          for (const n of Array.from(code.childNodes)) {
+            if (n.nodeType === Node.TEXT_NODE && /^\n+$/.test(n.nodeValue))
+              n.nodeValue = "";
+          }
+        }
+
+        stripInterlineNewlines(codeRoot);
+
+        const stepEls = Array.from(
+          document.querySelectorAll("#learn-steps [data-range]"),
+        );
+
+        if (!scroller || !codeRoot || !stepEls.length) return;
+
+        // --- line + token helpers (unchanged behavior) ---
+        function ensureLineSpans(root) {
+          const pre = root.tagName === "PRE" ? root : root.querySelector("pre");
+          const code = pre ? pre.querySelector("code") : null;
+          let lineNodes = code
+            ? code.querySelectorAll("span.line")
+            : root.querySelectorAll(".line");
+          if (lineNodes && lineNodes.length) return Array.from(lineNodes);
+
+          const target = code || pre || root;
+          if (!target) return [];
+          target.innerHTML = target.textContent
+            .split("\n")
+            .map(
+              (l) =>
+                `<span class="line">${l.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`,
+            )
+            .join("");
+          return Array.from(target.querySelectorAll(".line"));
+        }
+
+        const lineSpans = ensureLineSpans(codeRoot);
+
+        function clearHighlights() {
+          lineSpans.forEach((n) => n.classList.remove("active-line"));
+          codeRoot.querySelectorAll("mark[data-sublight]").forEach((m) => {
+            const parent = m.parentNode;
+            while (m.firstChild) parent.insertBefore(m.firstChild, m);
+            parent.removeChild(m);
+          });
+        }
+
+        function wrapTokens(node, tokens) {
+          const walker = document.createTreeWalker(
+            node,
+            NodeFilter.SHOW_TEXT,
+            null,
+          );
+          const pieces = [];
+          while (walker.nextNode()) pieces.push(walker.currentNode);
+          pieces.forEach((textNode) => {
+            tokens.forEach((tok) => {
+              const idx = textNode.nodeValue.indexOf(tok);
+              if (idx >= 0) {
+                const before = document.createTextNode(
+                  textNode.nodeValue.slice(0, idx),
+                );
+                const mark = document.createElement("mark");
+                mark.setAttribute("data-sublight", "");
+                mark.textContent = tok;
+                const after = document.createTextNode(
+                  textNode.nodeValue.slice(idx + tok.length),
+                );
+                const parent = textNode.parentNode;
+                parent.insertBefore(before, textNode);
+                parent.insertBefore(mark, textNode);
+                parent.insertBefore(after, textNode);
+                parent.removeChild(textNode);
+              }
+            });
+          });
+        }
+
+        function highlightRange(start, end, tokens) {
+          if (!lineSpans.length) return;
+          const a = Math.max(1, start) - 1;
+          const b = Math.min(lineSpans.length, end) - 1;
+          for (let i = a; i <= b; i++)
+            lineSpans[i]?.classList.add("active-line");
+
+          if (tokens && tokens.length) {
+            for (let i = a; i <= b; i++) wrapTokens(lineSpans[i], tokens);
+          }
+
+          const first = lineSpans[a];
+          const last = lineSpans[b];
+          scrollGroupIntoView(scroller, first, last, 24);
+        }
+
+        let currentEl = null;
+        function setActiveStep(el) {
+          if (!el || el === currentEl) return;
+          currentEl = el;
+
+          stepEls.forEach((s) => s.classList.toggle("step-active", s === el));
+          clearHighlights();
+
+          const [start, end] = el
+            .getAttribute("data-range")
+            .split("-")
+            .map(Number);
+          let tokens = null;
+          const tokensAttr = el.getAttribute("data-tokens");
+          try {
+            tokens = tokensAttr ? JSON.parse(tokensAttr) : null;
+          } catch {
+            tokens = null;
+          }
+          highlightRange(start, end, tokens);
+        }
+
+        // --- center-band IntersectionObserver selection ---
+        const visible = new Map(); // Element -> intersectionRatio
+
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) visible.set(e.target, e.intersectionRatio);
+              else visible.delete(e.target);
+            }
+            // Prefer the most visible step inside the band, else closest to center.
+            let candidate = null;
+            let bestRatio = -1;
+            for (const [el, ratio] of visible.entries()) {
+              if (ratio > bestRatio) {
+                bestRatio = ratio;
+                candidate = el;
+              }
+            }
+            if (!candidate) {
+              // fallback by center distance
+              const center = window.innerHeight * 0.5;
+              let bestDist = Infinity;
+              for (const el of stepEls) {
+                const r = el.getBoundingClientRect();
+                const mid = r.top + r.height / 2;
+                const d = Math.abs(mid - center);
+                if (d < bestDist) {
+                  bestDist = d;
+                  candidate = el;
+                }
+              }
+            }
+            setActiveStep(candidate);
+          },
+          {
+            // Activation band around the center to avoid flicker.
+            root: null,
+            rootMargin: "-45% 0px -45% 0px",
+            threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+          },
+        );
+
+        stepEls.forEach((el) => io.observe(el));
+
+        // Handle resizes and content changes.
+        const ro = new ResizeObserver(() => {
+          // Force IO callback via synthetic scroll tick.
+          requestAnimationFrame(() => setActiveStep(currentEl || stepEls[0]));
+        });
+        stepEls.forEach((el) => ro.observe(el));
+
+        // First paint.
+        setActiveStep(stepEls[0] || null);
+      })();
+    </script>
+  </section>
+
+  <section id="customize" class="flex justify-center p-16">
+    <div class="flex max-w-6xl flex-row items-center gap-8">
+      <div class="flex basis-1/2 flex-col gap-4">
+        <TextField
+          targetId="exp-code"
+          label="Prompt"
+          initial={prompt}
+          placeholder="Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to."
+        />
+        <Tabs
+          options={[
+            { value: "compact", label: "One-liner" },
+            { value: "readable", label: "Shell script" },
+          ]}
+          name="codeVersion"
+          defaultValue="compact"
+          targetId="exp-code"
+        />
+      </div>
+      <div class="flex basis-1/2">
+        <CodeCard title="ca.sh" monoTitle={true}>
+          <pre
+            id="exp-code"
+            class="astro-code language-sh max-h-[50vh] overflow-y-auto rounded-b bg-[#24292e] p-4 break-all whitespace-pre-wrap"
+            data-inner-readable={innerX}><code set:html={inner} /></pre>
+
+          <script is:inline>
+            (function () {
+              // Store both versions
+              const NEEDLE =
+                "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.";
+
+              // You'll need to pass these from Astro scope - add these as data attributes on exp-code
+              let currentVersion = "compact";
+              let innerCompact = null;
+              let innerReadable = null;
+
+              function escapeForJsSingleQuotedVisible(s) {
+                return s
+                  .replace(/\\/g, "\\\\")
+                  .replace(/'/g, "\\'")
+                  .replace(/"/g, '\\"')
+                  .replace(/`/g, "\\`")
+                  .replace(/\$\{/g, "\\${")
+                  .replace(/\r\n|\r|\n/g, "\\n")
+                  .replace(/\t/g, "\\t");
+              }
+
+              const pre = document.getElementById("exp-code");
+              if (!pre) return;
+              const code = pre.querySelector("code");
+              if (!code) return;
+
+              // Store original HTML versions
+              innerCompact = code.innerHTML;
+              // You need to store innerReadable - add as data attribute
+              innerReadable = pre.dataset.innerReadable || innerCompact;
+
+              function switchVersion(version) {
+                currentVersion = version;
+                code.innerHTML =
+                  version === "compact" ? innerCompact : innerReadable;
+                setupPromptEditing();
+              }
+
+              function setupPromptEditing() {
+                // Find and wrap the needle
+                const w = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+                let span;
+                while (w.nextNode()) {
+                  const n = w.currentNode;
+                  const i = n.nodeValue.indexOf(NEEDLE);
+                  if (i < 0) continue;
+
+                  const before = n.nodeValue.slice(0, i);
+                  const after = n.nodeValue.slice(i + NEEDLE.length);
+
+                  span = document.createElement("span");
+                  span.dataset.edit = "prompt";
+                  span.textContent = escapeForJsSingleQuotedVisible(NEEDLE);
+
+                  const frag = document.createDocumentFragment();
+                  if (before) frag.appendChild(document.createTextNode(before));
+                  frag.appendChild(span);
+                  if (after) frag.appendChild(document.createTextNode(after));
+                  n.parentNode.replaceChild(frag, n);
+                  break;
+                }
+                if (!span) return;
+
+                // Wire the textarea -> escaped content
+                const field = document.querySelector("textarea[data-target]");
+                if (!field) return;
+
+                const apply = (v) => {
+                  span.textContent = escapeForJsSingleQuotedVisible(v);
+                };
+                apply(field.value || "");
+
+                // Remove old listeners to prevent duplicates
+                const newField = field.cloneNode(true);
+                field.parentNode.replaceChild(newField, field);
+                newField.addEventListener("input", () => apply(newField.value));
+              }
+
+              // Initial setup
+              setupPromptEditing();
+
+              // Listen for tab changes
+              window.addEventListener("exp-code-change", (e) => {
+                switchVersion(e.detail.value);
+              });
+            })();
+          </script>
+        </CodeCard>
+      </div>
+    </div>
+  </section>
+
+  <section id="contribute" class="flex justify-center p-16">
+    <div
+      class="flex h-full w-full max-w-6xl flex-col justify-center gap-32 text-center"
+    >
+      <div class="flex flex-col gap-8">
+        <h2 class="text-4xl font-semibold">Contribute</h2>
+        <div class="flex flex-col gap-4">
+          <span class="text-xl text-gray-200">
+            Feel free to contribute to this project. It is open source on <a
+              href="https://github.com/ryanhsieh/clipboard-agent"
+              class="underline">GitHub</a
+            >.
+          </span>
+          <span class="text-xl text-gray-200">
+            Don't expect the code the be clean; its just a weekend project to
+            test out static websites on Cloudflare.
+          </span>
+          <span class="text-gray-400"
+            >Found a bug? Report it <a
+              href="https://github.com/ryanhsieh/clipboard-agent/issues/new"
+              class="underline">here.</a
+            ></span
+          >
+        </div>
+      </div>
+      <p>2025 Ryan Hsieh</p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,33 @@
+---
+const { targetId, label, initial = "", placeholder = "Type…" } = Astro.props;
+---
+
+<div class="flex flex-col gap-2">
+  <label class="font-semibold">{label}</label>
+  <textarea
+    class="items-center rounded border border-gray-700 bg-gray-800 p-2"
+    data-target={targetId}
+    placeholder={placeholder}>{initial}</textarea
+  >
+</div>
+
+<script is:inline>
+  const root = document.currentScript.closest("div");
+  const ta = root.querySelector("textarea");
+
+  function getEditable() {
+    return document.querySelector('#exp-code [data-edit="prompt"]');
+  }
+
+  function apply(val) {
+    const span = getEditable();
+    if (span) span.textContent = val;
+  }
+
+  const ready = () => apply(ta.value);
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", ready, { once: true });
+  else ready();
+  window.addEventListener("astro:page-load", ready);
+  ta.addEventListener("input", () => apply(ta.value));
+</script>

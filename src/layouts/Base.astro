@@ -1,0 +1,18 @@
+---
+import "../styles/global.css";
+import NavigationBar from "../components/NavigationBar.astro";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clipboard Agent</title>
+  </head>
+  <body class="flex h-dvh flex-col text-white antialiased">
+    <NavigationBar />
+    <main class="flex-1 scroll-smooth bg-gray-900">
+      <slot />
+    </main>
+  </body>
+</html>

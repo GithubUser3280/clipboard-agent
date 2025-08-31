@@ -1,0 +1,80 @@
+---
+export interface Props {
+  options: Array<{
+    value: string;
+    label: string;
+  }>;
+  name: string;
+  defaultValue?: string;
+  targetId: string;
+}
+
+const { options, name, defaultValue, targetId } = Astro.props as Props;
+const selectedValue = defaultValue || options[0]?.value;
+---
+
+<div class="radio-tabs-container" data-target={targetId}>
+  <div class="flex rounded-lg border border-gray-700 bg-gray-800 p-1">
+    {
+      options.map((option, index) => (
+        <label class="radio-tab-label flex-1">
+          <input
+            type="radio"
+            name={name}
+            value={option.value}
+            checked={option.value === selectedValue ? true : undefined}
+            class="sr-only"
+            data-index={index}
+          />
+          <span class="radio-tab-button block cursor-pointer rounded-md px-4 py-2 text-center text-sm font-medium transition-all duration-200 hover:text-white">
+            {option.label}
+          </span>
+        </label>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .radio-tab-label:has(input:checked) .radio-tab-button {
+    background-color: rgb(55 65 81);
+    color: white;
+  }
+  .radio-tab-label:not(:has(input:checked)) .radio-tab-button {
+    color: rgb(156 163 175);
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const containers = document.querySelectorAll<HTMLDivElement>(
+      ".radio-tabs-container",
+    );
+
+    containers.forEach((container) => {
+      const targetId = container.dataset.target;
+      if (!targetId) return;
+
+      const radios = container.querySelectorAll<HTMLInputElement>(
+        'input[type="radio"]',
+      );
+
+      radios.forEach((radio) => {
+        radio.addEventListener("change", (e) => {
+          const input = e.currentTarget as HTMLInputElement;
+          if (!input.checked) return;
+
+          const index = Number.parseInt(input.dataset.index ?? "0", 10);
+          const detail = { value: input.value, index };
+
+          document
+            .getElementById(targetId)
+            ?.dispatchEvent(new CustomEvent("radioTabChange", { detail }));
+          window.dispatchEvent(
+            new CustomEvent(`${targetId}-change`, { detail }),
+          );
+        });
+      });
+    });
+  });
+</script>

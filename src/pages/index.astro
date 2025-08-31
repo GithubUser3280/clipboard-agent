@@ -270,7 +270,10 @@ const steps = [
       </div>
     </div>
 
-    <div class="absolute bottom-6 left-1/2 -translate-x-1/2">
+    <div
+      class="absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300"
+      data-chevron
+    >
       <svg
         class="h-6 w-6 animate-bounce text-gray-500"
         fill="none"
@@ -283,6 +286,25 @@ const steps = [
       </svg>
     </div>
   </section>
+
+  <script is:inline>
+    (function () {
+      const hero = document.getElementById("hero");
+      const chev = document.querySelector("[data-chevron]");
+      if (!hero || !chev) return;
+
+      const io = new IntersectionObserver(
+        ([e]) => {
+          const hide = e.intersectionRatio < 0.98; // hide once user scrolls down a bit
+          chev.classList.toggle("opacity-0", hide);
+          chev.classList.toggle("pointer-events-none", hide);
+        },
+        { threshold: [0, 0.98] },
+      );
+
+      io.observe(hero);
+    })();
+  </script>
 
   <section id="features" class="flex justify-center p-16">
     <div class="flex max-w-6xl flex-col gap-8">

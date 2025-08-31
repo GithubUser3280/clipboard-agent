@@ -1,6 +1,7 @@
-# Probably doesn't work. I'm too lazy to test this.
-# lint-pack.ps1 — PowerShell 5.1+ and 7+ compatible. No npx/jq/awk/grep/sort/python.
-# Requires: Node.js, eslint, tsc (prefer local ./node_modules/.bin).
+# THIS HAS NOT BEEN TESTED. USE AT YOUR OWN RISK.
+
+# PowerShell 5.1+ and 7+ compatible
+# Node.js, eslint, tsc (prefer local ./node_modules/.bin)
 
 $ErrorActionPreference = 'SilentlyContinue'
 $copied = $false
@@ -21,20 +22,20 @@ if (-not $node)  { Write-Host 'node not found'; exit 1 }
 if (-not $eslint){ Write-Host 'eslint not found'; exit 1 }
 if (-not $tsc)   { Write-Host 'tsc not found'; exit 1 }
 
-# Temp files
+# Create temporary files
 function New-Tmp([string]$tag){ try { New-TemporaryFile } catch { [IO.File]::CreateTempFile() } }
 $EJSON = (New-Tmp 'eslint').FullName
 $TOUT  = (New-Tmp 'tsc').FullName
 $OTXT  = (New-Tmp 'out').FullName
 $FLIST = (New-Tmp 'files').FullName
 
-# 1) ESLint JSON
+# Write ESLint JSON
 & $eslint . --no-color -f json 1> $EJSON 2>$null; $null = $LASTEXITCODE
 
-# 2) tsc output
+# Write Typescript Compiler output
 & $tsc --noEmit --incremental false --pretty false *>&1 | Set-Content -LiteralPath $TOUT
 
-# 3) Parse and assemble with PowerShell (no external tools)
+# Parse and assemble with PowerShell
 $pwdPath = (Resolve-Path .).Path
 $outLines = New-Object System.Collections.Generic.List[string]
 $files = New-Object System.Collections.Generic.HashSet[string]
@@ -50,7 +51,7 @@ function Add-File([string]$p) {
   } catch {}
 }
 
-# ESLint parse
+# Parse ESLint JSON
 $eslintHad = $false
 try {
   $arr = Get-Content -LiteralPath $EJSON -Raw | ConvertFrom-Json
@@ -68,7 +69,7 @@ try {
   }
 } catch {}
 
-# tsc parse
+# Parse Typescript Compiler output
 $tscHad = $false
 $tscText = Get-Content -LiteralPath $TOUT -Raw
 if ($tscText.Trim().Length -gt 0) { $tscHad = $true }
@@ -85,7 +86,7 @@ if ($eslintHad -or $tscHad) {
   Set-Content -LiteralPath $FLIST -Value (($files.ToArray()) -join "`n")
 }
 
-# 4) Append file dumps with line numbers
+# Append mentioned files with line numbers
 if (Test-Path $OTXT -PathType Leaf -and (Get-Item $OTXT).Length -gt 0) {
   foreach ($p in Get-Content -LiteralPath $FLIST) {
     if (Test-Path -LiteralPath $p -PathType Leaf) {
@@ -99,7 +100,7 @@ if (Test-Path $OTXT -PathType Leaf -and (Get-Item $OTXT).Length -gt 0) {
   }
 }
 
-# 5) Clipboard best-effort
+# 5) Copy to clipboard
 if (Test-Path $OTXT -PathType Leaf -and (Get-Item $OTXT).Length -gt 0) {
   $data = Get-Content -LiteralPath $OTXT -Raw
   if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
@@ -109,7 +110,7 @@ if (Test-Path $OTXT -PathType Leaf -and (Get-Item $OTXT).Length -gt 0) {
   }
 }
 
-# 6) Report
+# Print summary
 if ($copied) {
   Write-Host 'Copied context to clipboard.'
 } elseif (Test-Path $OTXT -PathType Leaf -and (Get-Item $OTXT).Length -gt 0) {

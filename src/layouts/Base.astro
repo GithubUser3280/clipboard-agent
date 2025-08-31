@@ -9,10 +9,28 @@ import NavigationBar from "../components/NavigationBar.astro";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Clipboard Agent</title>
   </head>
-  <body class="flex h-dvh flex-col text-white antialiased">
+  <body
+    class="flex h-dvh flex-col overflow-hidden bg-gray-900 text-white antialiased"
+  >
     <NavigationBar />
-    <main class="flex-1 scroll-smooth bg-gray-900">
+    <main id="main-content" class="flex-1 overflow-y-auto scroll-smooth">
       <slot />
     </main>
   </body>
 </html>
+
+<script>
+  function setScrollPadding() {
+    const nav = document.querySelector("nav");
+    if (nav) {
+      const navHeight = nav.offsetHeight;
+      // Apply to html instead of main
+      document.documentElement.style.scrollPaddingTop = `${navHeight}px`;
+      console.log("Set scroll padding to:", navHeight + "px");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", setScrollPadding);
+  setTimeout(setScrollPadding, 100);
+  window.addEventListener("resize", setScrollPadding);
+</script>

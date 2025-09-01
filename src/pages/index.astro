@@ -151,17 +151,19 @@ async function getInnerHtml(code: string, lang: string) {
 
 <Base title="Clipboard Agent">
   <section id="hero" class="flex h-full justify-center">
-    <div class="flex max-w-6xl flex-row items-center">
-      <div class="flex basis-1/2 flex-col gap-4">
-        <h1 class="text-8xl font-bold">No API.<br />No install.</h1>
-        <p class="text-4xl text-slate-300">Just copy and paste.</p>
+    <div class="flex max-w-6xl flex-row items-center gap-8">
+      <div class="flex basis-1/2 flex-col gap-8">
+        <div class="flex flex-col gap-4">
+          <h1 class="text-8xl font-bold">No APIs.<br />No installs.</h1>
+          <p class="text-4xl text-slate-300">Just one file.</p>
+        </div>
         <p class="text-xl text-slate-400">
           Looking for a different version?
           <a href="#customize" class="underline">Click here</a>
         </p>
       </div>
       <div class="flex basis-1/2">
-        <CodeCard title="ca.sh" monoTitle={true}>
+        <CodeCard title="ca.sh (eslint + tsc)" monoTitle={true}>
           <Code
             class="astro-code max-h-[50vh] overflow-y-auto rounded-b p-4 break-words whitespace-pre-wrap"
             code={posixShellUniversal}
@@ -172,11 +174,11 @@ async function getInnerHtml(code: string, lang: string) {
     </div>
 
     <div
-      class="absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300"
+      class="absolute bottom-8 left-1/2 -translate-x-1/2 transition-opacity duration-300"
       data-chevron
     >
       <svg
-        class="h-6 w-6 animate-bounce text-gray-500"
+        class="h-8 w-8 animate-bounce text-gray-500"
         fill="none"
         stroke="currentColor"
         stroke-width="2"
@@ -191,61 +193,64 @@ async function getInnerHtml(code: string, lang: string) {
   <script is:inline>
     (function () {
       const hero = document.getElementById("hero");
-      const chev = document.querySelector("[data-chevron]");
-      if (!hero || !chev) return;
+      const cheveron = document.querySelector("[data-chevron]");
+      if (!hero || !cheveron) return;
 
-      const io = new IntersectionObserver(
-        ([e]) => {
-          const hide = e.intersectionRatio < 0.98; // hide once user scrolls down a bit
-          chev.classList.toggle("opacity-0", hide);
-          chev.classList.toggle("pointer-events-none", hide);
+      const intersectionObserver = new IntersectionObserver(
+        ([event]) => {
+          const hide = event.intersectionRatio < 0.98;
+          cheveron.classList.toggle("opacity-0", hide);
+          cheveron.classList.toggle("pointer-events-none", hide);
         },
         { threshold: [0, 0.98] },
       );
 
-      io.observe(hero);
+      intersectionObserver.observe(hero);
     })();
   </script>
 
   <section id="features" class="flex justify-center p-16">
     <div class="flex max-w-6xl flex-col gap-8">
-      <h2 class="text-semibold text-center text-4xl font-semibold">Features</h2>
+      <h2 class="text-center text-4xl font-semibold">Features</h2>
       <ul class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {
           features.map(({ label, description }) => (
-            <li class="flex flex-col gap-2 rounded bg-gray-800 p-4">
-              <h3 class="flex h-full items-center text-2xl">{label}</h3>
-              <p class="text-gray-200">{description}</p>
+            <li class="flex flex-col gap-2 rounded border border-gray-700 bg-gray-800 p-6">
+              <h3 class="flex text-2xl">{label}</h3>
+              <p class="text-gray-300">{description}</p>
             </li>
           ))
         }
       </ul>
+      <p class="text-sm text-gray-500">
+        *Node.js, ESLint, and TypeScript are required, but we assume you already
+        have them if you're using this.
+      </p>
     </div>
   </section>
 
   <section id="learn" class="flex justify-center p-16">
-    <div class="flex w-full max-w-6xl flex-col justify-center gap-8">
-      <h2 class="w-full text-center text-4xl font-semibold">How It Works</h2>
-      <div class="grid w-full max-w-6xl grid-cols-1 gap-8 p-4 lg:grid-cols-2">
-        <!-- Left: scrollytelling steps -->
+    <div class="flex max-w-6xl flex-col gap-8">
+      <h2 class="text-center text-4xl font-semibold">How It Works</h2>
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div id="learn-steps" class="flex flex-col gap-128 py-128">
           {
-            learnCards.map((s) => (
+            learnCards.map((card) => (
               <article
-                class="animate-[fade-center_1s_linear_both] rounded border border-gray-700 bg-gray-800 p-4 [animation-range:cover] [animation-timeline:view()] md:p-6"
-                data-range={`${s.range[0]}-${s.range[1]}`}
+                class="flex animate-[fade-center_1s_linear_both] flex-col gap-8 rounded border border-gray-700 bg-gray-800 p-6 [animation-range:cover] [animation-timeline:view()]"
+                data-range={`${card.range[0]}-${card.range[1]}`}
               >
-                <h3 class="text-2xl font-semibold">{s.title}</h3>
-                <h4 class="text-xl text-gray-500">{s.description}</h4>
-                <p class="mt-2 text-gray-300">
-                  Lines {s.range[0]}–{s.range[1]}
+                <div class="flex flex-col gap-2">
+                  <h3 class="text-2xl font-semibold">{card.title}</h3>
+                  <h4 class="text-gray-300">{card.description}</h4>
+                </div>
+                <p class="text-sm text-gray-500">
+                  Lines {card.range[0]}–{card.range[1]}
                 </p>
               </article>
             ))
           }
         </div>
-
-        <!-- Right: sticky highlighted code -->
         <div class="self-start lg:sticky lg:top-8">
           <CodeCard title="ca.sh" monoTitle={true}>
             <div
@@ -270,7 +275,7 @@ async function getInnerHtml(code: string, lang: string) {
       }
       #learn-code .line:empty::before {
         content: "\00a0";
-      } /* keeps visual blank line */
+      }
 
       #learn-code .active-line {
         background: rgba(255, 255, 255, 0.08);
@@ -280,7 +285,6 @@ async function getInnerHtml(code: string, lang: string) {
         scroll-padding-top: 1rem;
       }
 
-      /* Remove horizontal padding from the <pre> so lines can go edge-to-edge */
       #learn #learn-code.astro-code {
         padding-left: 0;
         padding-right: 0;
@@ -540,120 +544,129 @@ async function getInnerHtml(code: string, lang: string) {
   </section>
 
   <section id="customize" class="flex justify-center p-16">
-    <div class="flex max-w-6xl flex-row gap-8">
-      <div class="flex basis-1/2 flex-col gap-4">
-        <Tabs
-          options={[
-            { value: "compact", label: "One-liner" },
-            { value: "readable", label: "Shell script" },
-          ]}
-          name="codeVersion"
-          defaultValue="compact"
-          targetId="exp-code"
-        />
-        <TextEditor
-          targetId="exp-code"
-          label="Prompt"
-          initial={promptTextfield}
-          placeholder="Your custom prompt here..."
-        />
-      </div>
-      <div class="flex basis-1/2">
-        <CodeCard title="ca.sh" monoTitle={true}>
-          <pre
-            id="exp-code"
-            class="astro-code language-sh h-[50vh] overflow-y-auto rounded-b bg-[#24292e] p-4 break-words whitespace-pre-wrap"
-            data-inner-readable={placeholderShellInnerHTML}><code set:html={posixShellUniversalInnerHTML} /></pre>
+    <div class="flex max-w-6xl flex-col gap-8">
+      <h2 class="text-center text-4xl font-semibold">Customize</h2>
+      <div class="flex flex-row gap-8">
+        <div class="flex basis-1/2 flex-col gap-4">
+          <Tabs
+            options={[
+              { value: "compact", label: "One-liner" },
+              { value: "readable", label: "Shell script" },
+            ]}
+            name="codeVersion"
+            defaultValue="compact"
+            targetId="exp-code"
+          />
+          <TextEditor
+            targetId="exp-code"
+            label="Prompt"
+            initial={promptTextfield}
+            placeholder="Your custom prompt here..."
+          />
+        </div>
+        <div class="flex basis-1/2">
+          <CodeCard title="ca.sh" monoTitle={true}>
+            <pre
+              id="exp-code"
+              class="astro-code language-sh h-[50vh] overflow-y-auto rounded-b bg-[#24292e] p-4 break-words whitespace-pre-wrap"
+              data-inner-readable={placeholderShellInnerHTML}><code set:html={posixShellUniversalInnerHTML} /></pre>
 
-          <script is:inline>
-            (function () {
-              // Store both versions
-              const NEEDLE =
-                "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.";
+            <script is:inline>
+              (function () {
+                // Store both versions
+                const NEEDLE =
+                  "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.";
 
-              // You'll need to pass these from Astro scope - add these as data attributes on exp-code
-              let currentVersion = "compact";
-              let innerCompact = null;
-              let innerReadable = null;
+                // You'll need to pass these from Astro scope - add these as data attributes on exp-code
+                let currentVersion = "compact";
+                let innerCompact = null;
+                let innerReadable = null;
 
-              function escapeForJsSingleQuotedVisible(s) {
-                return s
-                  .replace(/\\/g, "\\\\")
-                  .replace(/'/g, "\\'")
-                  .replace(/"/g, '\\"')
-                  .replace(/`/g, "\\`")
-                  .replace(/\$\{/g, "\\${")
-                  .replace(/\r\n|\r|\n/g, "\\n")
-                  .replace(/\t/g, "\\t");
-              }
-
-              const pre = document.getElementById("exp-code");
-              if (!pre) return;
-              const code = pre.querySelector("code");
-              if (!code) return;
-
-              // Store original HTML versions
-              innerCompact = code.innerHTML;
-              // You need to store innerReadable - add as data attribute
-              innerReadable = pre.dataset.innerReadable || innerCompact;
-
-              function switchVersion(version) {
-                currentVersion = version;
-                code.innerHTML =
-                  version === "compact" ? innerCompact : innerReadable;
-                setupPromptEditing();
-              }
-
-              function setupPromptEditing() {
-                // Find and wrap the needle
-                const w = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-                let span;
-                while (w.nextNode()) {
-                  const n = w.currentNode;
-                  const i = n.nodeValue.indexOf(NEEDLE);
-                  if (i < 0) continue;
-
-                  const before = n.nodeValue.slice(0, i);
-                  const after = n.nodeValue.slice(i + NEEDLE.length);
-
-                  span = document.createElement("span");
-                  span.dataset.edit = "prompt";
-                  span.textContent = escapeForJsSingleQuotedVisible(NEEDLE);
-
-                  const frag = document.createDocumentFragment();
-                  if (before) frag.appendChild(document.createTextNode(before));
-                  frag.appendChild(span);
-                  if (after) frag.appendChild(document.createTextNode(after));
-                  n.parentNode.replaceChild(frag, n);
-                  break;
+                function escapeForJsSingleQuotedVisible(s) {
+                  return s
+                    .replace(/\\/g, "\\\\")
+                    .replace(/'/g, "\\'")
+                    .replace(/"/g, '\\"')
+                    .replace(/`/g, "\\`")
+                    .replace(/\$\{/g, "\\${")
+                    .replace(/\r\n|\r|\n/g, "\\n")
+                    .replace(/\t/g, "\\t");
                 }
-                if (!span) return;
 
-                // Wire the textarea -> escaped content
-                const field = document.querySelector("textarea[data-target]");
-                if (!field) return;
+                const pre = document.getElementById("exp-code");
+                if (!pre) return;
+                const code = pre.querySelector("code");
+                if (!code) return;
 
-                const apply = (v) => {
-                  span.textContent = escapeForJsSingleQuotedVisible(v);
-                };
-                apply(field.value || "");
+                // Store original HTML versions
+                innerCompact = code.innerHTML;
+                // You need to store innerReadable - add as data attribute
+                innerReadable = pre.dataset.innerReadable || innerCompact;
 
-                // Remove old listeners to prevent duplicates
-                const newField = field.cloneNode(true);
-                field.parentNode.replaceChild(newField, field);
-                newField.addEventListener("input", () => apply(newField.value));
-              }
+                function switchVersion(version) {
+                  currentVersion = version;
+                  code.innerHTML =
+                    version === "compact" ? innerCompact : innerReadable;
+                  setupPromptEditing();
+                }
 
-              // Initial setup
-              setupPromptEditing();
+                function setupPromptEditing() {
+                  // Find and wrap the needle
+                  const w = document.createTreeWalker(
+                    code,
+                    NodeFilter.SHOW_TEXT,
+                  );
+                  let span;
+                  while (w.nextNode()) {
+                    const n = w.currentNode;
+                    const i = n.nodeValue.indexOf(NEEDLE);
+                    if (i < 0) continue;
 
-              // Listen for tab changes
-              window.addEventListener("exp-code-change", (e) => {
-                switchVersion(e.detail.value);
-              });
-            })();
-          </script>
-        </CodeCard>
+                    const before = n.nodeValue.slice(0, i);
+                    const after = n.nodeValue.slice(i + NEEDLE.length);
+
+                    span = document.createElement("span");
+                    span.dataset.edit = "prompt";
+                    span.textContent = escapeForJsSingleQuotedVisible(NEEDLE);
+
+                    const frag = document.createDocumentFragment();
+                    if (before)
+                      frag.appendChild(document.createTextNode(before));
+                    frag.appendChild(span);
+                    if (after) frag.appendChild(document.createTextNode(after));
+                    n.parentNode.replaceChild(frag, n);
+                    break;
+                  }
+                  if (!span) return;
+
+                  // Wire the textarea -> escaped content
+                  const field = document.querySelector("textarea[data-target]");
+                  if (!field) return;
+
+                  const apply = (v) => {
+                    span.textContent = escapeForJsSingleQuotedVisible(v);
+                  };
+                  apply(field.value || "");
+
+                  // Remove old listeners to prevent duplicates
+                  const newField = field.cloneNode(true);
+                  field.parentNode.replaceChild(newField, field);
+                  newField.addEventListener("input", () =>
+                    apply(newField.value),
+                  );
+                }
+
+                // Initial setup
+                setupPromptEditing();
+
+                // Listen for tab changes
+                window.addEventListener("exp-code-change", (e) => {
+                  switchVersion(e.detail.value);
+                });
+              })();
+            </script>
+          </CodeCard>
+        </div>
       </div>
     </div>
   </section>

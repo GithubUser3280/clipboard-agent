@@ -44,7 +44,6 @@ FILES_LIST=$(mkf files.list)
 #   - write diagnositics
 #   - write file paths
 #   - write prompt if diagnostics are found
-
 "$NODE_CMD" - "$PWD" "$ESLINT_JSON" "$TSC_OUT" "$OUT_TXT" "$FILES_LIST" <<'NODE'
 // Define constants
 const fs = require('fs');
@@ -71,15 +70,14 @@ function appendFile(filePath) {
   } catch {}
 }
 
-
-let eslintHad = false;
+// Parse ESLint JSON output
+let eslintOut = false;
 try {
   const raw = fs.readFileSync(eslintJsonPath, 'utf8');
   const arr = JSON.parse(raw);
   for (const entry of arr) {
     if (entry && Array.isArray(entry.messages) && entry.messages.length) {
-      eslintHad = true;
-      // human-readable, but avoid absolute file paths
+      eslintOut = true;
       const rel = path.relative(pwd, entry.filePath || '');
       for (const m of entry.messages) {
         const rule = m.ruleId ? ` [${m.ruleId}]` : '';
@@ -90,19 +88,18 @@ try {
   }
 } catch {}
 
-let tscHad = false;
+// Parse TypeScript Compiler output
+let tscOut = false;
 try {
   const txt = fs.readFileSync(tscOutPath, 'utf8');
 
-  // Capture "path(line,col): error TSxxxx: msg"
   const reParen = /^(.+?)\((\d+),(\d+)\):\s*error TS\d+:\s*(.+)$/gm;
-  // Capture "path:line:col - error TSxxxx: msg"
   const reColon = /^(.+?):(\d+):(\d+)\s*-\s*error TS\d+:\s*(.+)$/gm;
 
   function pushTs(re) {
     let m;
     while ((m = re.exec(txt)) !== null) {
-      tscHad = true;
+      tscOut = true;
       const absPath = m[1];
       const line = m[2];
       const col  = m[3];
@@ -129,7 +126,7 @@ if (outLines.length > 0) {
 }
 NODE
 
-# 4) Append files with line numbers if any diagnostics.
+# Append files with line numbers if any diagnostics.
 if [ -s "$OUT_TXT" ]; then
   while IFS= read -r path; do
     [ -f "$path" ] || continue
@@ -137,6 +134,14 @@ if [ -s "$OUT_TXT" ]; then
     nl -b a "$path" >> "$OUT_TXT"
   done < "$FILES_LIST"
 fi
+
+# Delete temporary files
+REMOVE_OUT_TXT=0
+delete_tmp() {
+  rm -f -- "$ESLINT_JSON" "$TSC_OUT" "$FILES_LIST"
+  [ "${REMOVE_OUT_TXT:-0}" -eq 1 ] && rm -f -- "$OUT_TXT"
+}
+trap delete_tmp 0 INT TERM HUP
 
 # Attempt to copy to system clipboard
 copy_clipboard() {
@@ -147,14 +152,6 @@ copy_clipboard() {
   if command -v clip.exe>/dev/null 2>&1; then clip.exe; return 0; fi
   return 1
 }
-
-# Clean up temporary files
-REMOVE_OUT_TXT=0
-clean_up() {
-  rm -f -- "$ESLINT_JSON" "$TSC_OUT" "$FILES_LIST"
-  [ "${REMOVE_OUT_TXT:-0}" -eq 1 ] && rm -f -- "$OUT_TXT"
-}
-trap clean_up 0 INT TERM HUP
 
 # Print summary
 if [ -s "$OUT_TXT" ]; then

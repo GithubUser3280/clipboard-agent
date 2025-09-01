@@ -4,112 +4,149 @@ import { Code } from "astro:components";
 import CodeCard from "../components/CodeCard.astro";
 import TextEditor from "../components/TextEditor.astro";
 import Tabs from "../components/Tabs.astro";
+import { codeToHtml } from "shiki";
 import fs from "node:fs";
 import path from "node:path";
 
-const scriptPath = path.resolve(
-  process.cwd(),
-  "snippets/tested/posixShellUniversal.sh",
-);
-const shellScript: string = fs.readFileSync(scriptPath, "utf8");
-
-const promptTextfield = `The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.`;
-
-const PROMPT =
-  "The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.";
-
-const [pre, suf] = shellScript.split(PROMPT);
-
-const codeWithSpan = pre + PROMPT + suf;
-
-import { codeToHtml } from "shiki";
-
-const highlighted = await codeToHtml(codeWithSpan, {
-  lang: "sh",
-  theme: "github-dark",
-});
-
-// Remove outer <pre><code> and keep only inner HTML
-const inner = highlighted
-  .replace(/^.*?<code[^>]*>/s, "")
-  .replace(/<\/code>\s*<\/pre>$/s, "");
-
 const features = [
   {
-    label: "Open Source",
+    label: "Free",
     description:
       "No rate limits, no API keys. Switch to any provider, at any time.",
   },
   {
     label: "Easy Integration",
     description:
-      "No package managers, no dependencies*. Just copy and paste, or create one file.",
-  },
-  {
-    label: "Any Provider Works",
-    description: "Any provider works, just paste into the chatbot UI.",
+      "No package managers, no dependencies*. Just one copy and paste or download.",
   },
   {
     label: "Customizable",
     description: "Fine-tune your prompt, exactly how you like it.",
   },
   {
-    label: "No Project Changes",
+    label: "Choose Any Provider",
+    description: "Paste your context directly into any chatbot UI.",
+  },
+  {
+    label: "No Project Modifications",
+    description: "No permanent files will be created, modified, or deleted.",
+  },
+  {
+    label: "Open Source",
+    description: "Add features. Open issues. All the code is on Github.",
+  },
+];
+
+const promptTextfield = `The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.`;
+
+const posixShellUniversalPath = path.resolve(
+  process.cwd(),
+  "snippets/tested/posixShellUniversal.sh",
+);
+const posixShellUniversal: string = fs.readFileSync(
+  posixShellUniversalPath,
+  "utf8",
+);
+
+const posixShellUniversalInnerHTML = await getInnerHtml(
+  posixShellUniversal,
+  "sh",
+);
+
+const placeholderShell = String.raw`<Placeholder>The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to.<Placeholder>`;
+
+const placeholderShellInnerHTML = await getInnerHtml(placeholderShell, "sh");
+
+const learnCards = [
+  {
+    title: "Setup Shell Script",
+    description: "Set up the shell environment and allow errors.",
+    range: [1, 2],
+  },
+  {
+    title: "Define Commands",
+    description: "Find and define eslint, tsc, and node commands.",
+    range: [4, 18],
+  },
+  {
+    title: "Create Temporary Files",
+    description: "Create temporary files, and fallback if mktemp is missing.",
+    range: [20, 31],
+  },
+  {
+    title: "Run ESLint",
+    description: "Run ESLint and write JSON output to a temporary file.",
+    range: [33, 34],
+  },
+  {
+    title: "Run TypeScript Compiler",
+    description: "Run Typescript Compiler write output to a temporary file.",
+    range: [36, 37],
+  },
+  {
+    title: "Use Node",
+    description: "Use Node for JavaScript.",
+    range: [39, 47],
+  },
+  {
+    title: "Define constants",
     description:
-      "No files are created or written to, except for temporary files.",
+      "Import filesystem, path, and temporary file paths. Create variables.",
+    range: [48, 53],
+  },
+  {
+    title: "Add File Paths",
+    description: "Append normalized absolute file paths to a temporary file.",
+    range: [55, 71],
+  },
+  {
+    title: "Parse ESLint",
+    description: "Parse ESLint JSON output from temporary file.",
+    range: [73, 89],
+  },
+  {
+    title: "Parse TypeScript Compiler",
+    description: "Parse TypeScript Compiler output from temporary file.",
+    range: [91, 115],
+  },
+  {
+    title: "Write Header",
+    description:
+      "Write and format the prompt with diagnostics from both ESLint and TypeScript Compiler.",
+    range: [117, 126],
+  },
+  {
+    title: "Append Files",
+    description:
+      "Add the contents of the files mentioned in the diagnostics with line numbers.",
+    range: [129, 136],
+  },
+  {
+    title: "Delete Temporary Files",
+    description:
+      "Delete temporary files, keeping OUT_TXT if unable to copy to clipboard.",
+    range: [138, 144],
+  },
+  {
+    title: "Copy to Clipboard",
+    description:
+      "Attempt to copy to the system clipboard. Returns 1 if unsuccessful.",
+    range: [146, 154],
+  },
+  {
+    title: "Print summary",
+    description: "Print success or failure and what action was done.",
+    range: [156, 168],
   },
 ];
 
-const placeholderTabString = String.raw`Placeholder: The following are the diagnostics from the TypeScript compiler and ESLint. Tell me how to fix every error and/or warning. Tell me exactly what lines I need to modify in what file and what I need to change them to. Placeholder.`;
+async function getInnerHtml(code: string, lang: string) {
+  const html = await codeToHtml(code, { lang, theme: "github-dark" });
 
-const [preX, sufX] = placeholderTabString.split(PROMPT);
-
-const codeWithSpanX = preX + PROMPT + sufX;
-
-const highlightedX = await codeToHtml(codeWithSpanX, {
-  lang: "sh",
-  theme: "github-dark",
-});
-
-// Remove outer <pre><code> and keep only inner HTML
-const innerX = highlightedX
-  .replace(/^.*?<code[^>]*>/s, "")
-  .replace(/<\/code>\s*<\/pre>$/s, "");
-
-const steps = [
-  { title: "Setup shell", range: [1, 2] },
-  { title: "Find commands", range: [4, 14] },
-  {
-    title: "Define ESLint, Typescript Compiler, and Node.js",
-    range: [16, 18],
-  },
-  { title: "Create temporary files", range: [20, 27] },
-  {
-    title: "Write ESLint json output to temporary file",
-    range: [29, 30],
-  },
-  {
-    title: "Run Typescript Compiler and combine output",
-    range: [32, 33],
-  },
-  {
-    title:
-      "Use Node for parsing the ESLint JSON, parse Typescript Compiler output for paths, make all paths absolute, dedupe duplicate paths, write file list, and write header if needed",
-    range: [35, 108],
-  },
-  {
-    title: "Append file dumps with line number if needed",
-    range: [110, 118],
-  },
-  {
-    title: "Attempt to copy to system clipboard, write to file if none found.",
-    range: [120, 136],
-  },
-  {
-    title: "Display success or failure",
-    range: [138, 145],
-  },
-];
+  return html
+    .replace(/^.*?<code[^>]*>/s, "")
+    .replace(/<\/code>\s*<\/pre>$/s, "");
+}
 ---
 
 <Base title="Clipboard Agent">
@@ -127,7 +164,7 @@ const steps = [
         <CodeCard title="ca.sh" monoTitle={true}>
           <Code
             class="astro-code max-h-[50vh] overflow-y-auto rounded-b p-4 break-words whitespace-pre-wrap"
-            code={shellScript}
+            code={posixShellUniversal}
             lang="sh"
           />
         </CodeCard>
@@ -193,12 +230,13 @@ const steps = [
         <!-- Left: scrollytelling steps -->
         <div id="learn-steps" class="flex flex-col gap-128 py-128">
           {
-            steps.map((s) => (
+            learnCards.map((s) => (
               <article
                 class="animate-[fade-center_1s_linear_both] rounded border border-gray-700 bg-gray-800 p-4 [animation-range:cover] [animation-timeline:view()] md:p-6"
                 data-range={`${s.range[0]}-${s.range[1]}`}
               >
                 <h3 class="text-2xl font-semibold">{s.title}</h3>
+                <h4 class="text-xl text-gray-500">{s.description}</h4>
                 <p class="mt-2 text-gray-300">
                   Lines {s.range[0]}–{s.range[1]}
                 </p>
@@ -217,7 +255,7 @@ const steps = [
               <Code
                 id="learn-code"
                 class="astro-code block p-4 break-words whitespace-pre-wrap"
-                code={shellScript}
+                code={posixShellUniversal}
                 lang="sh"
               />
             </div>
@@ -525,7 +563,7 @@ const steps = [
           <pre
             id="exp-code"
             class="astro-code language-sh h-[50vh] overflow-y-auto rounded-b bg-[#24292e] p-4 break-words whitespace-pre-wrap"
-            data-inner-readable={innerX}><code set:html={inner} /></pre>
+            data-inner-readable={placeholderShellInnerHTML}><code set:html={posixShellUniversalInnerHTML} /></pre>
 
           <script is:inline>
             (function () {

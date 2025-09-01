@@ -548,15 +548,21 @@ async function getInnerHtml(code: string, lang: string) {
       <h2 class="text-center text-4xl font-semibold">Customize</h2>
       <div class="flex flex-row gap-8">
         <div class="flex basis-1/2 flex-col gap-4">
-          <Tabs
-            options={[
-              { value: "compact", label: "One-liner" },
-              { value: "readable", label: "Shell script" },
-            ]}
-            name="codeVersion"
-            defaultValue="compact"
-            targetId="exp-code"
-          />
+          <div class="flex flex-col gap-2">
+            <p class="font-semibold">OS Interface</p>
+            <Tabs
+              options={[
+                { value: "compact", label: "Universal POSIX (eslint + tsc)" },
+                {
+                  value: "readable",
+                  label: "Powershell (coming soon!)",
+                },
+              ]}
+              name="codeVersion"
+              defaultValue="compact"
+              targetId="exp-code"
+            />
+          </div>
           <TextEditor
             targetId="exp-code"
             label="Prompt"
@@ -678,15 +684,15 @@ async function getInnerHtml(code: string, lang: string) {
       <div class="flex flex-col gap-8">
         <h2 class="text-4xl font-semibold">Contribute</h2>
         <div class="flex flex-col gap-4">
-          <span class="text-xl text-gray-200">
-            Feel free to contribute to this project. It is open source on <a
+          <span class="text text-gray-200">
+            Feel free to contribute to this project. It's open source on <a
               href="https://github.com/GithubUser3280/clipboard-agent"
               class="underline">GitHub</a
-            >.
+            > under the MIT License.
           </span>
-          <span class="text-xl text-gray-200">
-            Don't expect the code the be clean; its just a weekend project to
-            test out static websites on Cloudflare.
+          <span class="text text-gray-200">
+            Don't expect the code the be clean; it's just a weekend project to
+            test out static websites hosted on Cloudflare.
           </span>
           <span class="text-gray-400"
             >Found a bug? Report it <a

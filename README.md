@@ -4,43 +4,39 @@ A collection of terminal commands and shell scripts designed to make agentic cod
 
 ## Who is this for?
 
-Clipboard Agent is for people who want to use the power of AI to help code, debug, and implement features in their projects without worrying about rate limits, subscriptions, or data collection. We offer full transparency in what we do (our project is fully open source!).
+Clipboard Agent is for people who want to use the power of AI to help code, debug, and implement features in their projects without worrying about rate limits, subscriptions, or data collection. Our project is fully open source.
 
 ## Why Shell Script?
 
 Easy integration, minimal setup, works on nearly every machine, small file size. No need to worry about updating or using package managers.
 
-As an added benefit, you see (and hopefully understand) exactly what you are adding to your project.
+As an added benefit, you see and understand exactly what you are adding to your project.
 
 ### Easy integration
 
-Use a one-liner in the terminal for one-time use, just like npx!
-
-Or add simple one-file copy-paste shell script into your project.
-
-No dependencies. Nothing installed. Just terminal commands.
+Just one file needed. No installation. No extra dependencies needed.
 
 ### Customizability
 
-Nearly every operating system has a scripting functionality. If our scripts do not work on your machine, change it! Its simple enough to modify.
+Nearly every operating system has a scripting functionality.
 
-Customize the prompt. Our website can generate a script specific to you.
+Customize the prompt on our website.
 
-Want more? Add it yourself! The code is open-source. It is just one file of code.
+Feel free to add more features.
 
-## Tech Stack (static website)
+## Tech Stack
 
 - Package manager: pnpm and npx
 - Framework: Astro
 - Consistency:
-  - Git: Git/Github
+  - Version Control: Git/Github
   - Formatter: Prettier
   - Linter: ESLint
   - Checker: Husky
-- Deployment: Cloudflare pages (static)
+- Deployment: Cloudflare Pages (static)
 
 ## Contributing
 
 Feel free to contribute or open issues for this project.
 
-Be aware that this is my first open-source project, so I probably won't manage this project well (if I even manage it at all after this weekend).
+Be aware that this is my first open-source project, so I probably won't manage this project well (if I even remember).
